@@ -48,10 +48,13 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-*.html
+bxtrender_*.html
 *.csv
 *.log
 terminals/
+
+# Keep index.html for GitHub Pages
+!index.html
 
 # Keep README
 !README.md
