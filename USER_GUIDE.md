@@ -6,8 +6,8 @@
 
 ```bash
 cd ~/Desktop
-git clone https://github.com/AJT55/algo.git
-cd algo
+git clone https://github.com/AJT55/v0-github-project.git
+cd v0-github-project
 pip install -r requirements.txt
 ```
 

@@ -8,16 +8,15 @@
 
 ```bash
 cd ~/Desktop
-git clone https://github.com/AJT55/algo.git
-cd algo
+git clone https://github.com/AJT55/v0-github-project.git
+cd v0-github-project
 ```
 
 **Or download as ZIP:**
-1. Go to: https://github.com/AJT55/algo
+1. Go to: https://github.com/AJT55/v0-github-project
 2. Click the green "Code" button
 3. Click "Download ZIP"
 4. Extract to your Desktop
-5. Rename folder to `algo` if needed
 
 ---
 
@@ -62,13 +61,13 @@ python3 --version
 In Terminal, type:
 
 ```bash
-cd ~/Desktop/algo
+cd ~/Desktop/v0-github-project
 ```
 
 **Or if you cloned/extracted it elsewhere:**
 
 ```bash
-cd /path/to/where/you/cloned/algo
+cd /path/to/where/you/cloned/v0-github-project
 ```
 
 **Tip:** You can drag the folder from Finder into Terminal to auto-fill the path!
@@ -341,7 +340,7 @@ pip3 install --user -r requirements.txt
 
 ### 1. Run Your First Analysis (5 minutes)
 ```bash
-cd ~/Desktop/algo
+cd ~/Desktop/v0-github-project
 pip3 install -r requirements.txt
 python3 bxtrender_panel.py
 open bxtrender_*.html
@@ -399,7 +398,7 @@ Create a weekly cron job:
 crontab -e
 
 # Add this line (runs every Monday at 9 AM):
-0 9 * * 1 cd ~/Desktop/algo && python3 bxtrender_panel.py
+0 9 * * 1 cd ~/Desktop/v0-github-project && python3 bxtrender_panel.py
 ```
 
 ### Tip 3: Export Signal Data

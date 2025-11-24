@@ -85,13 +85,13 @@ YFinance Index → Actual Data Period
 ### Clone from GitHub
 
 ```bash
-git clone https://github.com/AJT55/algo.git
-cd algo
+git clone https://github.com/AJT55/v0-github-project.git
+cd v0-github-project
 pip install -r requirements.txt
 ```
 
 **Or download ZIP:**
-1. Visit: https://github.com/AJT55/algo
+1. Visit: https://github.com/AJT55/v0-github-project
 2. Click "Code" → "Download ZIP"
 3. Extract and navigate to folder
 
