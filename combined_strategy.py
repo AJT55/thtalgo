@@ -42,9 +42,9 @@ from indicators.fair_value_bands import calculate_fair_value_bands, FAIR_VALUE_P
 from config import BX_TRENDER_PARAMS
 
 def generate_combined_signals(symbol='AAPL', 
-                              daily_period='2y',
-                              weekly_period='2y',
-                              monthly_period='2y'):
+                              daily_period='10y',
+                              weekly_period='10y',
+                              monthly_period='10y'):
     """
     Generate combined B-Xtrender entry + Fair Value Bands exit signals.
     
@@ -632,8 +632,8 @@ if __name__ == "__main__":
     
     fig, data, signals = generate_combined_signals(
         symbol='AAPL',
-        daily_period='2y',
-        weekly_period='2y',
-        monthly_period='2y'
+        daily_period='10y',
+        weekly_period='10y',
+        monthly_period='10y'
     )
 
