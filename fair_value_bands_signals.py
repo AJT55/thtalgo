@@ -95,16 +95,15 @@ def generate_fvb_signals(symbol='AAPL',
     # ----------------------------------------------------------------------
     # 100% EXIT SIGNALS (Daily 2x Deviation Bands)
     # ----------------------------------------------------------------------
-    # Exit when daily candle CLOSES above upper 2x band OR below lower 2x band
+    # Exit when daily candle CLOSES above upper 2x band (LONG EXIT ONLY)
     # ----------------------------------------------------------------------
     
     for date in daily_fvb.index:
         close_price = daily_fvb.loc[date, 'Close']
         upper_2x = daily_fvb.loc[date, 'deviation_upper_2x']
-        lower_2x = daily_fvb.loc[date, 'deviation_lower_2x']
         
-        # Check if close is outside 2x bands
-        if pd.notna(upper_2x) and pd.notna(lower_2x):
+        # Check if close is above 2x upper band (long exit only)
+        if pd.notna(upper_2x):
             if close_price > upper_2x:
                 # LONG EXIT - Price closed above upper 2x band
                 exit_signals['100_percent'].append({
@@ -115,30 +114,19 @@ def generate_fvb_signals(symbol='AAPL',
                     'timeframe': 'Daily',
                     'band_type': '2x Upper'
                 })
-            elif close_price < lower_2x:
-                # SHORT EXIT - Price closed below lower 2x band
-                exit_signals['100_percent'].append({
-                    'date': date,
-                    'price': close_price,
-                    'type': 'SHORT_EXIT',
-                    'band_level': lower_2x,
-                    'timeframe': 'Daily',
-                    'band_type': '2x Lower'
-                })
     
     # ----------------------------------------------------------------------
     # 50% EXIT SIGNALS (Weekly 1x Deviation Bands)
     # ----------------------------------------------------------------------
-    # Exit when weekly candle CLOSES above upper 1x band OR below lower 1x band
+    # Exit when weekly candle CLOSES above upper 1x band (LONG EXIT ONLY)
     # ----------------------------------------------------------------------
     
     for date in weekly_fvb.index:
         close_price = weekly_fvb.loc[date, 'Close']
         upper_1x = weekly_fvb.loc[date, 'deviation_upper_1x']
-        lower_1x = weekly_fvb.loc[date, 'deviation_lower_1x']
         
-        # Check if close is outside 1x bands
-        if pd.notna(upper_1x) and pd.notna(lower_1x):
+        # Check if close is above 1x upper band (long exit only)
+        if pd.notna(upper_1x):
             if close_price > upper_1x:
                 # LONG EXIT - Price closed above upper 1x band
                 exit_signals['50_percent'].append({
@@ -148,16 +136,6 @@ def generate_fvb_signals(symbol='AAPL',
                     'band_level': upper_1x,
                     'timeframe': 'Weekly',
                     'band_type': '1x Upper'
-                })
-            elif close_price < lower_1x:
-                # SHORT EXIT - Price closed below lower 1x band
-                exit_signals['50_percent'].append({
-                    'date': date,
-                    'price': close_price,
-                    'type': 'SHORT_EXIT',
-                    'band_level': lower_1x,
-                    'timeframe': 'Weekly',
-                    'band_type': '1x Lower'
                 })
     
     print(f"\n✓ Found {len(exit_signals['100_percent'])} Daily 2x band exits (100%)")
@@ -210,7 +188,7 @@ def generate_fvb_signals(symbol='AAPL',
         row=1, col=1
     )
     
-    # 1x Deviation Bands
+    # 1x Deviation Band (upper only)
     fig.add_trace(
         go.Scatter(
             x=daily_fvb.index,
@@ -223,19 +201,7 @@ def generate_fvb_signals(symbol='AAPL',
         row=1, col=1
     )
     
-    fig.add_trace(
-        go.Scatter(
-            x=daily_fvb.index,
-            y=daily_fvb['deviation_lower_1x'],
-            mode='lines',
-            name='1x Lower',
-            line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
-            showlegend=True
-        ),
-        row=1, col=1
-    )
-    
-    # 2x Deviation Bands (for 100% exit)
+    # 2x Deviation Band (upper only - for 100% exit)
     fig.add_trace(
         go.Scatter(
             x=daily_fvb.index,
@@ -248,22 +214,9 @@ def generate_fvb_signals(symbol='AAPL',
         row=1, col=1
     )
     
-    fig.add_trace(
-        go.Scatter(
-            x=daily_fvb.index,
-            y=daily_fvb['deviation_lower_2x'],
-            mode='lines',
-            name='2x Lower (100% Exit)',
-            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
-            showlegend=True
-        ),
-        row=1, col=1
-    )
-    
-    # 100% Exit Signals (Daily 2x band)
+    # 100% Exit Signals (Daily 2x band - LONG ONLY)
     if exit_signals['100_percent']:
         long_exits_100 = [s for s in exit_signals['100_percent'] if s['type'] == 'LONG_EXIT']
-        short_exits_100 = [s for s in exit_signals['100_percent'] if s['type'] == 'SHORT_EXIT']
         
         if long_exits_100:
             fig.add_trace(
@@ -281,27 +234,6 @@ def generate_fvb_signals(symbol='AAPL',
                           for s in long_exits_100],
                     hoverinfo='text',
                     name='100% Long Exit',
-                    showlegend=True
-                ),
-                row=1, col=1
-            )
-        
-        if short_exits_100:
-            fig.add_trace(
-                go.Scatter(
-                    x=[s['date'] for s in short_exits_100],
-                    y=[s['price'] for s in short_exits_100],
-                    mode='markers',
-                    marker=dict(
-                        symbol='star',
-                        size=15,
-                        color='green',
-                        line=dict(width=2, color='darkgreen')
-                    ),
-                    text=[f"100% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>Price: ${s['price']:.2f}" 
-                          for s in short_exits_100],
-                    hoverinfo='text',
-                    name='100% Short Exit',
                     showlegend=True
                 ),
                 row=1, col=1
@@ -338,7 +270,7 @@ def generate_fvb_signals(symbol='AAPL',
         row=2, col=1
     )
     
-    # 1x Deviation Bands (for 50% exit)
+    # 1x Deviation Band (upper only - for 50% exit)
     fig.add_trace(
         go.Scatter(
             x=weekly_fvb.index,
@@ -351,19 +283,7 @@ def generate_fvb_signals(symbol='AAPL',
         row=2, col=1
     )
     
-    fig.add_trace(
-        go.Scatter(
-            x=weekly_fvb.index,
-            y=weekly_fvb['deviation_lower_1x'],
-            mode='lines',
-            name='1x Lower (50% Exit)',
-            line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
-            showlegend=True
-        ),
-        row=2, col=1
-    )
-    
-    # 2x Deviation Bands (for reference on weekly)
+    # 2x Deviation Band (upper only - for reference)
     fig.add_trace(
         go.Scatter(
             x=weekly_fvb.index,
@@ -376,22 +296,9 @@ def generate_fvb_signals(symbol='AAPL',
         row=2, col=1
     )
     
-    fig.add_trace(
-        go.Scatter(
-            x=weekly_fvb.index,
-            y=weekly_fvb['deviation_lower_2x'],
-            mode='lines',
-            name='2x Lower',
-            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
-            showlegend=True
-        ),
-        row=2, col=1
-    )
-    
-    # 50% Exit Signals (Weekly 1x band)
+    # 50% Exit Signals (Weekly 1x band - LONG ONLY)
     if exit_signals['50_percent']:
         long_exits_50 = [s for s in exit_signals['50_percent'] if s['type'] == 'LONG_EXIT']
-        short_exits_50 = [s for s in exit_signals['50_percent'] if s['type'] == 'SHORT_EXIT']
         
         if long_exits_50:
             fig.add_trace(
@@ -409,27 +316,6 @@ def generate_fvb_signals(symbol='AAPL',
                           for s in long_exits_50],
                     hoverinfo='text',
                     name='50% Long Exit',
-                    showlegend=True
-                ),
-                row=2, col=1
-            )
-        
-        if short_exits_50:
-            fig.add_trace(
-                go.Scatter(
-                    x=[s['date'] for s in short_exits_50],
-                    y=[s['price'] for s in short_exits_50],
-                    mode='markers',
-                    marker=dict(
-                        symbol='star',
-                        size=15,
-                        color='lightblue',
-                        line=dict(width=2, color='blue')
-                    ),
-                    text=[f"50% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>Price: ${s['price']:.2f}" 
-                          for s in short_exits_50],
-                    hoverinfo='text',
-                    name='50% Short Exit',
                     showlegend=True
                 ),
                 row=2, col=1
@@ -481,38 +367,26 @@ def generate_fvb_signals(symbol='AAPL',
     print("EXIT SIGNAL SUMMARY")
     print(f"{'='*60}\n")
     
-    # 100% Exits
-    print("📍 100% EXIT SIGNALS (Daily 2x Bands):")
+    # 100% Exits (Long only)
+    print("📍 100% EXIT SIGNALS (Daily 2x Bands - LONG ONLY):")
     print("-" * 60)
     
     long_100 = [s for s in exit_signals['100_percent'] if s['type'] == 'LONG_EXIT']
-    short_100 = [s for s in exit_signals['100_percent'] if s['type'] == 'SHORT_EXIT']
     
     print(f"  Long Exits (above upper 2x): {len(long_100)}")
     if long_100:
         for signal in long_100[-5:]:  # Show last 5
             print(f"    {signal['date'].strftime('%Y-%m-%d')}: ${signal['price']:.2f} (Band: ${signal['band_level']:.2f})")
     
-    print(f"\n  Short Exits (below lower 2x): {len(short_100)}")
-    if short_100:
-        for signal in short_100[-5:]:  # Show last 5
-            print(f"    {signal['date'].strftime('%Y-%m-%d')}: ${signal['price']:.2f} (Band: ${signal['band_level']:.2f})")
-    
-    # 50% Exits
-    print(f"\n📍 50% EXIT SIGNALS (Weekly 1x Bands):")
+    # 50% Exits (Long only)
+    print(f"\n📍 50% EXIT SIGNALS (Weekly 1x Bands - LONG ONLY):")
     print("-" * 60)
     
     long_50 = [s for s in exit_signals['50_percent'] if s['type'] == 'LONG_EXIT']
-    short_50 = [s for s in exit_signals['50_percent'] if s['type'] == 'SHORT_EXIT']
     
     print(f"  Long Exits (above upper 1x): {len(long_50)}")
     if long_50:
         for signal in long_50[-5:]:  # Show last 5
-            print(f"    {signal['date'].strftime('%Y-%m-%d')}: ${signal['price']:.2f} (Band: ${signal['band_level']:.2f})")
-    
-    print(f"\n  Short Exits (below lower 1x): {len(short_50)}")
-    if short_50:
-        for signal in short_50[-5:]:  # Show last 5
             print(f"    {signal['date'].strftime('%Y-%m-%d')}: ${signal['price']:.2f} (Band: ${signal['band_level']:.2f})")
     
     print(f"\n{'='*60}")
@@ -533,9 +407,9 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("FAIR VALUE BANDS - EXIT SIGNAL GENERATOR")
     print("="*60)
-    print("\nExit Strategy:")
-    print("  • 100% Exit: Daily close breaks 2x deviation band")
-    print("  • 50% Exit: Weekly close breaks 1x deviation band")
+    print("\nExit Strategy (LONG ONLY):")
+    print("  • 100% Exit: Daily close above 2x upper deviation band")
+    print("  • 50% Exit: Weekly close above 1x upper deviation band")
     print("  • All signals wait for candle CLOSE confirmation")
     print("\n" + "="*60 + "\n")
     
