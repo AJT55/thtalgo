@@ -99,10 +99,9 @@ def generate_combined_signals(symbol='AAPL',
     daily_fvb = calculate_fair_value_bands(daily_data, **FAIR_VALUE_PARAMS)
     print("✓ Daily Fair Value Bands calculated")
     
-    # Trim daily data to last 2 years for display (but keep full calculations)
-    two_years_ago = daily_fvb.index[-1] - pd.DateOffset(years=2)
-    daily_fvb_display = daily_fvb[daily_fvb.index >= two_years_ago]
-    print(f"✓ Daily display trimmed to last 2 years ({len(daily_fvb_display)} bars)")
+    # Use full 10 years for display
+    daily_fvb_display = daily_fvb
+    print(f"✓ Displaying all {len(daily_fvb_display)} daily bars")
     
     weekly_fvb = calculate_fair_value_bands(weekly_data, **FAIR_VALUE_PARAMS)
     print("✓ Weekly Fair Value Bands calculated")
@@ -307,29 +306,27 @@ def generate_combined_signals(symbol='AAPL',
         row=1, col=1
     )
     
-    # 100% Exit Stars (filter to display range)
+    # 100% Exit Stars (all signals)
     if exit_100_signals:
-        exit_100_display = [s for s in exit_100_signals if s['date'] >= two_years_ago]
-        if exit_100_display:
-            fig.add_trace(
-                go.Scatter(
-                    x=[s['date'] for s in exit_100_display],
-                    y=[s['price'] for s in exit_100_display],
-                    mode='markers',
-                    marker=dict(
-                        symbol='star',
-                        size=12,
-                        color='red',
-                        line=dict(width=2, color='darkred')
-                    ),
-                    text=[f"100% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" 
-                          for s in exit_100_display],
-                    hoverinfo='text',
-                    name='100% Exit',
-                    showlegend=True
+        fig.add_trace(
+            go.Scatter(
+                x=[s['date'] for s in exit_100_signals],
+                y=[s['price'] for s in exit_100_signals],
+                mode='markers',
+                marker=dict(
+                    symbol='star',
+                    size=12,
+                    color='red',
+                    line=dict(width=2, color='darkred')
                 ),
-                row=1, col=1
-            )
+                text=[f"100% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" 
+                      for s in exit_100_signals],
+                hoverinfo='text',
+                name='100% Exit',
+                showlegend=True
+            ),
+            row=1, col=1
+        )
     
     # ====================================================================
     # PANEL 2: Weekly Price + Fair Value Bands + Entry Signals
