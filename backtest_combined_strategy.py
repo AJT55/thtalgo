@@ -41,10 +41,11 @@ from config import BX_TRENDER_PARAMS
 class Trade:
     """Represents a single trade with entry, exits, and P&L tracking."""
     
-    def __init__(self, entry_date, entry_price, entry_signal):
+    def __init__(self, entry_date, entry_price, entry_signal, capital_allocated=10000):
         self.entry_date = entry_date
         self.entry_price = entry_price
         self.entry_signal = entry_signal
+        self.capital_allocated = capital_allocated  # Starting capital for this trade
         self.position_size = 1.0  # Start with 100% position
         self.exits = []
         self.exit_date = None
@@ -71,7 +72,7 @@ class Trade:
             self.exit_reason = exit_reason
     
     def calculate_pnl(self):
-        """Calculate total P&L for this trade."""
+        """Calculate total P&L percentage for this trade."""
         if not self.exits:
             return 0
         
@@ -82,6 +83,11 @@ class Trade:
             total_pnl_percent += weighted_pnl
         
         return total_pnl_percent
+    
+    def calculate_pnl_dollars(self):
+        """Calculate total P&L in dollars."""
+        pnl_percent = self.calculate_pnl()
+        return (pnl_percent / 100) * self.capital_allocated
     
     def get_summary(self):
         """Get trade summary."""
@@ -96,10 +102,11 @@ class Trade:
         }
 
 
-def run_backtest(symbol='AAPL', 
-                daily_period='max',
-                weekly_period='10y',
-                monthly_period='10y'):
+def run_backtest(symbol='AAPL',
+                 daily_period='max',
+                 weekly_period='10y',
+                 monthly_period='10y',
+                 starting_capital=10000):
     """
     Run comprehensive backtest of combined strategy.
     
@@ -240,7 +247,8 @@ def run_backtest(symbol='AAPL',
                 active_trade = Trade(
                     entry_date=event['date'],
                     entry_price=event['price'],
-                    entry_signal=event
+                    entry_signal=event,
+                    capital_allocated=starting_capital
                 )
                 trades.append(active_trade)
             # else: Skip this entry signal - already in a trade
@@ -291,10 +299,13 @@ def run_backtest(symbol='AAPL',
     
     if completed_trades:
         pnls = [t.calculate_pnl() for t in completed_trades]
+        pnls_dollars = [t.calculate_pnl_dollars() for t in completed_trades]
         durations = [t.get_summary()['duration_days'] for t in completed_trades]
         
         winning_trades = [p for p in pnls if p > 0]
         losing_trades = [p for p in pnls if p < 0]
+        winning_dollars = [d for d in pnls_dollars if d > 0]
+        losing_dollars = [d for d in pnls_dollars if d < 0]
         
         statistics = {
             'total_trades': len(completed_trades),
@@ -305,10 +316,13 @@ def run_backtest(symbol='AAPL',
             'avg_loss': np.mean(losing_trades) if losing_trades else 0,
             'avg_pnl': np.mean(pnls),
             'total_pnl': np.sum(pnls),
+            'total_pnl_dollars': np.sum(pnls_dollars),
+            'final_capital': starting_capital + np.sum(pnls_dollars),
             'max_win': max(pnls) if pnls else 0,
             'max_loss': min(pnls) if pnls else 0,
             'avg_duration': np.mean(durations) if durations else 0,
-            'profit_factor': abs(sum(winning_trades) / sum(losing_trades)) if losing_trades and sum(losing_trades) != 0 else float('inf')
+            'profit_factor': abs(sum(winning_trades) / sum(losing_trades)) if losing_trades and sum(losing_trades) != 0 else float('inf'),
+            'starting_capital': starting_capital
         }
     else:
         statistics = {}
@@ -668,6 +682,9 @@ def run_backtest(symbol='AAPL',
     if statistics:
         print(f"📊 PERFORMANCE SUMMARY:")
         print("-" * 70)
+        print(f"  Starting Capital: ${statistics['starting_capital']:,.2f}")
+        print(f"  Final Capital: ${statistics['final_capital']:,.2f}")
+        print(f"  Total P&L: ${statistics['total_pnl_dollars']:+,.2f} ({statistics['total_pnl']:+.2f}%)")
         print(f"  Total Trades: {statistics['total_trades']}")
         print(f"  Winning Trades: {statistics['winning_trades']}")
         print(f"  Losing Trades: {statistics['losing_trades']}")
@@ -675,7 +692,6 @@ def run_backtest(symbol='AAPL',
         print(f"  Average Win: {statistics['avg_win']:.2f}%")
         print(f"  Average Loss: {statistics['avg_loss']:.2f}%")
         print(f"  Average P&L: {statistics['avg_pnl']:.2f}%")
-        print(f"  Total P&L: {statistics['total_pnl']:.2f}%")
         print(f"  Max Win: {statistics['max_win']:.2f}%")
         print(f"  Max Loss: {statistics['max_loss']:.2f}%")
         print(f"  Profit Factor: {statistics['profit_factor']:.2f}")

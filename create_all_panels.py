@@ -70,7 +70,7 @@ def create_all_panels_chart(symbol='AAPL'):
             f'{symbol} Weekly Price + Actual Trades Only',
             f'{symbol} Weekly B-Xtrender',
             f'{symbol} Monthly B-Xtrender',
-            'Cumulative P&L (%)'
+            'Account Equity ($)'
         ),
         row_heights=[0.20, 0.20, 0.20, 0.15, 0.15, 0.10]
     )
@@ -485,18 +485,26 @@ def create_all_panels_chart(symbol='AAPL'):
     )
     
     # ====================================================================
-    # PANEL 6: Equity Curve
+    # PANEL 6: Equity Curve (in Dollars)
     # ====================================================================
     
     if trades:
         equity_curve = []
-        cumulative_pnl = 0
+        cumulative_pnl_dollars = 0
         equity_dates = []
+        starting_capital = trades[0].capital_allocated if trades else 10000
+        
+        # Start with initial capital
+        equity_dates.append(trades[0].entry_date if trades else pd.Timestamp.now())
+        equity_curve.append(starting_capital)
         
         for trade in trades:
-            cumulative_pnl += trade.calculate_pnl()
-            equity_curve.append(cumulative_pnl)
-            equity_dates.append(trade.exit_date)
+            if trade.exits:
+                cumulative_pnl_dollars += trade.calculate_pnl_dollars()
+                current_equity = starting_capital + cumulative_pnl_dollars
+                equity_curve.append(current_equity)
+                # Use last exit date for this trade
+                equity_dates.append(max([e['date'] for e in trade.exits]))
         
         fig.add_trace(
             go.Scatter(
@@ -513,7 +521,7 @@ def create_all_panels_chart(symbol='AAPL'):
             row=6, col=1
         )
         
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", row=6, col=1)
+        fig.add_hline(y=starting_capital, line_dash="dash", line_color="gray", row=6, col=1)
     
     # Count active vs completed
     completed_count = len([t for t in trades if t.is_closed])
@@ -522,7 +530,7 @@ def create_all_panels_chart(symbol='AAPL'):
     # Layout
     title_text = f'{symbol} - ALL-IN-ONE STRATEGY VIEW<br>'
     if stats:
-        title_text += f'<sub>Completed: {completed_count} | Active: {active_count} | Win Rate: {stats["win_rate"]:.1f}% | Total P&L: +{stats["total_pnl"]:.1f}%</sub>'
+        title_text += f'<sub>${stats["starting_capital"]:,.0f} → ${stats["final_capital"]:,.0f} | P&L: ${stats["total_pnl_dollars"]:+,.2f} ({stats["total_pnl"]:+.1f}%) | Completed: {completed_count} | Active: {active_count} | Win Rate: {stats["win_rate"]:.1f}%</sub>'
     else:
         title_text += f'<sub>Total Trades: {len(trades)} (All Active)</sub>'
     
@@ -549,7 +557,7 @@ def create_all_panels_chart(symbol='AAPL'):
     # ====================================================================
     
     trade_table_html = """
-    <div style="max-width: 1400px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
+    <div style="max-width: 1600px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
         <h2 style="text-align: center; color: #333; margin-bottom: 30px;">📊 TRADE LOG</h2>
         <table style="width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <thead>
@@ -558,6 +566,7 @@ def create_all_panels_chart(symbol='AAPL'):
                     <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Entry Date</th>
                     <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Entry Price</th>
                     <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Exit Events</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">P&L ($)</th>
                     <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">P&L (%)</th>
                     <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Duration</th>
                 </tr>
@@ -608,11 +617,18 @@ def create_all_panels_chart(symbol='AAPL'):
             from datetime import datetime
             duration_days = (datetime.now() - trade.entry_date).days
         
+        # Calculate dollar P&L
+        pnl_dollars = trade.calculate_pnl_dollars()
+        
         # Format P&L display
         if is_active:
-            pnl_display = f"{pnl:+.2f}% (unrealized)"
+            pnl_percent_display = f"{pnl:+.2f}%"
+            pnl_dollar_display = f"${pnl_dollars:+,.2f}"
+            unrealized_tag = " <span style='color: #b8860b; font-size: 0.9em;'>(unrealized)</span>"
         else:
-            pnl_display = f"{pnl:+.2f}%"
+            pnl_percent_display = f"{pnl:+.2f}%"
+            pnl_dollar_display = f"${pnl_dollars:+,.2f}"
+            unrealized_tag = ""
         
         trade_table_html += f"""
                 <tr style="background-color: {row_bg};">
@@ -621,7 +637,10 @@ def create_all_panels_chart(symbol='AAPL'):
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${trade.entry_price:.2f}</td>
                     <td style="padding: 12px; border: 1px solid #ddd;">{exit_events}</td>
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: {pnl_color};">
-                        {pnl_display}
+                        {pnl_dollar_display}{unrealized_tag}
+                    </td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: {pnl_color};">
+                        {pnl_percent_display}
                     </td>
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">{duration_days} days</td>
                 </tr>
