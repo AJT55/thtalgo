@@ -1,6 +1,6 @@
 # B-Xtrender Trading System
 
-Multi-timeframe trading signal generator using B-Xtrender indicator.
+Multi-timeframe trading signal generator with B-Xtrender and Fair Value Bands indicators.
 
 ## Installation
 
@@ -16,8 +16,11 @@ pip install -r requirements.txt
 python bxtrender_panel.py
 ```
 
-Generates interactive HTML chart with entry signals.
+Generates interactive HTML chart with:
+- Weekly & Monthly price charts with Fair Value Bands overlay
+- B-Xtrender histograms (color-coded momentum)
+- Entry signal markers based on multi-timeframe alignment
 
 ## Configuration
 
-Edit `config.py` to customize parameters.
+Edit `config.py` to customize B-Xtrender and Fair Value Bands parameters.

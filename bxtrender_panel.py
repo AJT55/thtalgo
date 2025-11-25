@@ -43,6 +43,7 @@ warnings.filterwarnings('ignore')
 # Import our custom modules
 from data.data_handler import get_sample_data, DataHandler
 from indicators.bxtrender import calculate_bxtrender
+from indicators.fair_value_bands import calculate_fair_value_bands, FAIR_VALUE_PARAMS
 from config import BX_TRENDER_PARAMS, DATA_PARAMS
 
 
@@ -115,6 +116,11 @@ def create_bxtrender_multi_timeframe(symbol='AAPL', periods={'weekly': '5y', 'mo
 
         # Calculate B-Xtrender
         result = calculate_bxtrender(data, **BX_TRENDER_PARAMS)
+        
+        # Calculate Fair Value Bands
+        print("Calculating Fair Value Bands...")
+        result = calculate_fair_value_bands(result, **FAIR_VALUE_PARAMS)
+        
         results[timeframe] = result
         timeframes[timeframe] = len(data)
 
@@ -269,6 +275,100 @@ def create_bxtrender_multi_timeframe(symbol='AAPL', periods={'weekly': '5y', 'mo
                 low=result['Low'],
                 close=result['Close'],
                 name=f'{timeframe.title()} Price',
+                showlegend=False
+            ),
+            row=1, col=col+1
+        )
+        
+        # Add Fair Value Bands to price chart
+        # Fair Value Basis (center line)
+        trend_colors = ['lime' if x == 1 else 'red' for x in result['trend_direction']]
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['fair_value'],
+                mode='lines',
+                name='Fair Value',
+                line=dict(color='blue', width=2),
+                showlegend=False,
+                opacity=0.7
+            ),
+            row=1, col=col+1
+        )
+        
+        # Threshold bands (with fill)
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['threshold_upper'],
+                mode='lines',
+                name='Threshold Upper',
+                line=dict(color='rgba(0,128,128,0.3)', width=1),
+                showlegend=False,
+                fill=None
+            ),
+            row=1, col=col+1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['threshold_lower'],
+                mode='lines',
+                name='Threshold Lower',
+                line=dict(color='rgba(255,0,0,0.3)', width=1),
+                showlegend=False,
+                fill='tonexty',
+                fillcolor='rgba(128,128,128,0.2)'
+            ),
+            row=1, col=col+1
+        )
+        
+        # Deviation bands (1x) - yellow/tan color
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['deviation_upper_1x'],
+                mode='lines',
+                name='Deviation 1x Upper',
+                line=dict(color='rgb(196,177,101)', width=1),
+                showlegend=False
+            ),
+            row=1, col=col+1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['deviation_lower_1x'],
+                mode='lines',
+                name='Deviation 1x Lower',
+                line=dict(color='rgb(196,177,101)', width=1),
+                showlegend=False
+            ),
+            row=1, col=col+1
+        )
+        
+        # Deviation bands (2x) - pink/salmon color
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['deviation_upper_2x'],
+                mode='lines',
+                name='Deviation 2x Upper',
+                line=dict(color='rgb(255,107,107)', width=1),
+                showlegend=False
+            ),
+            row=1, col=col+1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=result.index,
+                y=result['deviation_lower_2x'],
+                mode='lines',
+                name='Deviation 2x Lower',
+                line=dict(color='rgb(255,107,107)', width=1),
                 showlegend=False
             ),
             row=1, col=col+1

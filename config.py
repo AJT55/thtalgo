@@ -54,6 +54,34 @@ BX_TRENDER_PARAMS = {
 }
 
 # ============================================================================
+# FAIR VALUE BANDS PARAMETERS
+# ============================================================================
+# Parameters for the Fair Value Bands indicator overlay
+# This indicator provides dynamic support/resistance levels
+# ============================================================================
+
+FAIR_VALUE_PARAMS = {
+    # Fair Value Basis Settings
+    'smoothing_type': 'SMA',  # Smoothing method: SMA, EMA, HMA, RMA, WMA, VWMA, Median, VWAP
+    'length': 33,             # Smoothing period
+    'source_str': 'OHLC4',    # Price source for fair value
+    
+    # Threshold Band Settings
+    'threshold_up_str': 'Low',     # Source for upper threshold detection
+    'threshold_down_str': 'High',  # Source for lower threshold detection
+    'threshold_boost': 1.0,        # Threshold band width multiplier
+    
+    # Deviation Band Settings
+    'deviation_boost': 1.0,   # Deviation band width multiplier (1x and 2x bands)
+    
+    # VWAP Settings
+    'vwap_anchor': '1D',      # VWAP anchor timeframe
+    
+    # Trend Mode
+    'trend_mode': 'Cross'     # 'Cross' or 'Direction'
+}
+
+# ============================================================================
 # DATA FETCHING PARAMETERS
 # ============================================================================
 # Default parameters for data fetching via YFinance
