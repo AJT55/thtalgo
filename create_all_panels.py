@@ -133,19 +133,22 @@ def create_all_panels_chart(symbol='AAPL'):
     
     # Show 100% exits
     exits_100 = []
-    for trade in trades:
+    for i, trade in enumerate(trades, 1):
         for exit_info in trade.exits:
             if exit_info['reason'] == '100% Exit (Daily 2x)':
-                exits_100.append(exit_info)
+                exits_100.append({'date': exit_info['date'], 'price': exit_info['price'], 'trade_num': i})
     
     if exits_100:
         fig.add_trace(
             go.Scatter(
                 x=[e['date'] for e in exits_100],
                 y=[e['price'] for e in exits_100],
-                mode='markers',
+                mode='markers+text',
                 marker=dict(symbol='star', size=12, color='red', line=dict(width=2, color='darkred')),
-                text=[f"100% EXIT<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_100],
+                text=[f"#{e['trade_num']}" for e in exits_100],
+                textposition='top center',
+                textfont=dict(size=9, color='darkred', family='Arial Black'),
+                hovertext=[f"100% EXIT #{e['trade_num']}<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_100],
                 hoverinfo='text',
                 name='100% Exit',
                 showlegend=True
@@ -154,7 +157,7 @@ def create_all_panels_chart(symbol='AAPL'):
         )
         
     # ====================================================================
-    # PANEL 2: Weekly Price + Bands Only (Visual Levels)
+    # PANEL 2: Weekly Price + Bands + All Trade Events
     # ====================================================================
     
     fig.add_trace(
@@ -188,7 +191,7 @@ def create_all_panels_chart(symbol='AAPL'):
             y=weekly_fvb['deviation_upper_1x'],
             mode='lines',
             name='1x Upper (50%)',
-            line=dict(color='rgb(196,177,101)', width=1, dash='dash'),
+            line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
             showlegend=False
         ),
         row=2, col=1
@@ -205,6 +208,77 @@ def create_all_panels_chart(symbol='AAPL'):
         ),
         row=2, col=1
     )
+    
+    # Add ALL trade events to weekly bands panel
+    if trades:
+        # Entries
+        fig.add_trace(
+            go.Scatter(
+                x=[t.entry_date for t in trades],
+                y=[t.entry_price for t in trades],
+                mode='markers',
+                marker=dict(symbol='star', size=15, color='lime', line=dict(width=2, color='darkgreen')),
+                text=[f"ENTRY #{i+1}<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for i, t in enumerate(trades)],
+                hoverinfo='text',
+                name='Entry',
+                showlegend=False
+            ),
+            row=2, col=1
+        )
+        
+        # 50% Exits
+        exits_50_weekly = [{'date': e['date'], 'price': e['price'], 'trade_num': i+1} 
+                           for i, t in enumerate(trades) for e in t.exits if '50%' in e['reason']]
+        if exits_50_weekly:
+            fig.add_trace(
+                go.Scatter(
+                    x=[e['date'] for e in exits_50_weekly],
+                    y=[e['price'] for e in exits_50_weekly],
+                    mode='markers',
+                    marker=dict(symbol='star', size=12, color='orange', line=dict(width=2, color='darkorange')),
+                    text=[f"50% EXIT #{e['trade_num']}<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_50_weekly],
+                    hoverinfo='text',
+                    name='50% Exit',
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+        
+        # 100% Exits on weekly panel
+        exits_100_weekly = [{'date': e['date'], 'price': e['price'], 'trade_num': i+1} 
+                            for i, t in enumerate(trades) for e in t.exits if '100%' in e['reason']]
+        if exits_100_weekly:
+            fig.add_trace(
+                go.Scatter(
+                    x=[e['date'] for e in exits_100_weekly],
+                    y=[e['price'] for e in exits_100_weekly],
+                    mode='markers',
+                    marker=dict(symbol='star', size=12, color='red', line=dict(width=2, color='darkred')),
+                    text=[f"100% EXIT #{e['trade_num']}<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_100_weekly],
+                    hoverinfo='text',
+                    name='100% Exit',
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+            
+        # Stop Losses on weekly panel
+        stops_weekly = [{'date': s['date'], 'price': s['price'], 'trade_num': i+1} 
+                        for i, t in enumerate(trades) for s in t.exits if 'Stop Loss' in s['reason']]
+        if stops_weekly:
+            fig.add_trace(
+                go.Scatter(
+                    x=[s['date'] for s in stops_weekly],
+                    y=[s['price'] for s in stops_weekly],
+                    mode='markers',
+                    marker=dict(symbol='x', size=12, color='purple', line=dict(width=3)),
+                    text=[f"STOP #{s['trade_num']}<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" for s in stops_weekly],
+                    hoverinfo='text',
+                    name='Stop Loss',
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
     
     # ====================================================================
     # PANEL 3: Weekly Price + ACTUAL TRADES ONLY (No Bands)
@@ -223,16 +297,19 @@ def create_all_panels_chart(symbol='AAPL'):
         row=3, col=1
     )
     
-    # Trades
+    # Trades with numbers
     if trades:
         # Entries
         fig.add_trace(
             go.Scatter(
                 x=[t.entry_date for t in trades],
                 y=[t.entry_price for t in trades],
-                mode='markers',
+                mode='markers+text',
                 marker=dict(symbol='star', size=15, color='lime', line=dict(width=2, color='darkgreen')),
-                text=[f"ENTRY<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for t in trades],
+                text=[f"#{i+1}" for i in range(len(trades))],
+                textposition='top center',
+                textfont=dict(size=10, color='darkgreen', family='Arial Black'),
+                hovertext=[f"ENTRY #{i+1}<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for i, t in enumerate(trades)],
                 hoverinfo='text',
                 name='Entry',
                 showlegend=True
@@ -241,15 +318,19 @@ def create_all_panels_chart(symbol='AAPL'):
         )
         
         # 50% Exits
-        exits_50 = [e for t in trades for e in t.exits if '50%' in e['reason']]
+        exits_50 = [{'date': e['date'], 'price': e['price'], 'trade_num': i+1} 
+                    for i, t in enumerate(trades) for e in t.exits if '50%' in e['reason']]
         if exits_50:
             fig.add_trace(
                 go.Scatter(
                     x=[e['date'] for e in exits_50],
                     y=[e['price'] for e in exits_50],
-                    mode='markers',
+                    mode='markers+text',
                     marker=dict(symbol='star', size=12, color='orange', line=dict(width=2, color='darkorange')),
-                    text=[f"50% EXIT<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_50],
+                    text=[f"#{e['trade_num']}" for e in exits_50],
+                    textposition='top center',
+                    textfont=dict(size=9, color='darkorange', family='Arial Black'),
+                    hovertext=[f"50% EXIT #{e['trade_num']}<br>{e['date'].strftime('%Y-%m-%d')}<br>${e['price']:.2f}" for e in exits_50],
                     hoverinfo='text',
                     name='50% Exit',
                     showlegend=True
@@ -258,15 +339,19 @@ def create_all_panels_chart(symbol='AAPL'):
             )
             
         # Stop Losses
-        stops = [e for t in trades for e in t.exits if 'Stop Loss' in e['reason']]
+        stops = [{'date': s['date'], 'price': s['price'], 'trade_num': i+1} 
+                 for i, t in enumerate(trades) for s in t.exits if 'Stop Loss' in s['reason']]
         if stops:
             fig.add_trace(
                 go.Scatter(
                     x=[s['date'] for s in stops],
                     y=[s['price'] for s in stops],
-                    mode='markers',
+                    mode='markers+text',
                     marker=dict(symbol='x', size=12, color='purple', line=dict(width=3)),
-                    text=[f"STOP<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" for s in stops],
+                    text=[f"#{s['trade_num']}" for s in stops],
+                    textposition='bottom center',
+                    textfont=dict(size=9, color='purple', family='Arial Black'),
+                    hovertext=[f"STOP #{s['trade_num']}<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" for s in stops],
                     hoverinfo='text',
                     name='Stop Loss',
                     showlegend=True
@@ -401,14 +486,110 @@ def create_all_panels_chart(symbol='AAPL'):
         xaxis6_rangeslider_visible=False
     )
     
-    # Save
+    # ====================================================================
+    # CREATE TRADE TABLE
+    # ====================================================================
+    
+    trade_table_html = """
+    <div style="max-width: 1400px; margin: 40px auto; padding: 20px; font-family: Arial, sans-serif;">
+        <h2 style="text-align: center; color: #333; margin-bottom: 30px;">📊 TRADE LOG</h2>
+        <table style="width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <thead>
+                <tr style="background-color: #2c3e50; color: white;">
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Trade #</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Entry Date</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Entry Price</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Exit Events</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">P&L (%)</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    
+    for i, trade in enumerate(trades, 1):
+        pnl = trade.calculate_pnl()
+        pnl_color = 'green' if pnl > 0 else 'red' if pnl < 0 else 'gray'
+        row_bg = '#f9f9f9' if i % 2 == 0 else 'white'
+        
+        # Build exit events column
+        exit_events = ""
+        for exit_info in trade.exits:
+            exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
+            exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
+            exit_events += f"""
+            <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                <strong style="color: {exit_color};">{exit_type}</strong>: 
+                {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+            </div>
+            """
+        
+        # Calculate duration
+        if trade.exits:
+            final_exit_date = max([e['date'] for e in trade.exits])
+            duration_days = (final_exit_date - trade.entry_date).days
+        else:
+            duration_days = 0
+        
+        trade_table_html += f"""
+                <tr style="background-color: {row_bg};">
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">{i}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">{trade.entry_date.strftime('%Y-%m-%d')}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${trade.entry_price:.2f}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{exit_events}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: {pnl_color};">
+                        {pnl:+.2f}%
+                    </td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">{duration_days} days</td>
+                </tr>
+        """
+    
+    trade_table_html += """
+            </tbody>
+        </table>
+    </div>
+    """
+    
+    # ====================================================================
+    # SAVE WITH TABLE
+    # ====================================================================
+    
     import datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Get the chart HTML
+    chart_html = fig.to_html(include_plotlyjs='cdn', full_html=False)
+    
+    # Combine with table
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>{symbol} - Complete Strategy View</title>
+        <style>
+            body {{
+                margin: 0;
+                padding: 20px;
+                background-color: #f5f5f5;
+                font-family: Arial, sans-serif;
+            }}
+        </style>
+    </head>
+    <body>
+        {chart_html}
+        {trade_table_html}
+    </body>
+    </html>
+    """
+    
     filename = f'all_panels_{symbol}_{timestamp}.html'
-    fig.write_html(filename)
+    with open(filename, 'w') as f:
+        f.write(full_html)
     print(f"\n✓ Chart saved as {filename}")
     
-    fig.write_html('index.html')
+    with open('index.html', 'w') as f:
+        f.write(full_html)
     print(f"✓ Chart saved as index.html (Live)")
     
     fig.show()
