@@ -28,8 +28,8 @@ from indicators.fair_value_bands import calculate_fair_value_bands, FAIR_VALUE_P
 from config import DATA_PARAMS
 
 def generate_fvb_signals(symbol='AAPL', 
-                        daily_period='2y',
-                        weekly_period='5y'):
+                        daily_period='max',
+                        weekly_period='max'):
     """
     Generate Fair Value Bands trading signals with multi-timeframe exits.
     
@@ -541,7 +541,7 @@ if __name__ == "__main__":
     
     fig, daily_data, weekly_data, exit_signals = generate_fvb_signals(
         symbol='AAPL',
-        daily_period='2y',
-        weekly_period='5y'
+        daily_period='max',
+        weekly_period='max'
     )
 

@@ -156,93 +156,133 @@ def calculate_fair_value_bands(df,
     )
     result['fair_value'] = fair_price_smooth
     
-    # Calculate spreads (price deviation from fair value)
+    # ========================================================================
+    # BAR-BY-BAR CALCULATION (Matching PineScript exactly)
+    # ========================================================================
+    # PineScript uses var arrays that build up sequentially across all bars
+    # We need to replicate this exact sequential processing
+    
+    # Pre-calculate vectorized values for speed
     low_spread = df['Low'] / fair_price_smooth
     high_spread = df['High'] / fair_price_smooth
-    
-    # Deviation tracking (when price crosses fair value)
-    deviation_down = np.where(
-        (df['Low'] < fair_price_smooth) & (df['High'] > fair_price_smooth),
-        low_spread,
-        np.nan
-    )
-    deviation_up = np.where(
-        (df['Low'] < fair_price_smooth) & (df['High'] > fair_price_smooth),
-        high_spread,
-        np.nan
-    )
-    
-    # Calculate median deviations (using last 1000 valid values)
-    median_up_dev = pd.Series(deviation_up).rolling(window=min(1000, len(df)), min_periods=1).median()
-    median_down_dev = pd.Series(deviation_down).rolling(window=min(1000, len(df)), min_periods=1).median()
-    
-    # Threshold bands
-    upper_band = fair_price_smooth * median_up_dev
-    lower_band = fair_price_smooth * median_down_dev
-    
-    band_up_spread = upper_band - fair_price_smooth
-    band_down_spread = fair_price_smooth - lower_band
-    
-    upper_band_boosted = fair_price_smooth + (band_up_spread * threshold_boost)
-    lower_band_boosted = fair_price_smooth - (band_down_spread * threshold_boost)
-    
-    result['threshold_upper'] = upper_band_boosted
-    result['threshold_lower'] = lower_band_boosted
-    
-    # Trend direction calculation
-    dir_switch = np.zeros(len(df), dtype=int)
-    
-    for i in range(1, len(df)):
-        if trend_mode == 'Cross':
-            trend_rule_up = threshold_up_src.iloc[i] > upper_band_boosted.iloc[i]
-            trend_rule_down = threshold_down_src.iloc[i] < lower_band_boosted.iloc[i]
-        else:  # Direction
-            trend_rule_up = fair_price_smooth.iloc[i] > fair_price_smooth.iloc[i-1]
-            trend_rule_down = fair_price_smooth.iloc[i] < fair_price_smooth.iloc[i-1]
-        
-        if trend_rule_down:
-            dir_switch[i] = -1
-        elif trend_rule_up:
-            dir_switch[i] = 1
-        else:
-            dir_switch[i] = dir_switch[i-1]  # Maintain previous direction
-    
-    result['trend_direction'] = dir_switch
-    
-    # Calculate OHLC4 spread for pivot detection
     ohlc4 = (df['Open'] + df['High'] + df['Low'] + df['Close']) / 4
     ohlc_spread = ohlc4 / fair_price_smooth
     
-    # Pivot high/low detection (5 bars left, 5 bars right)
-    pivot_ups = []
-    pivot_downs = []
+    # Initialize var arrays (like PineScript)
+    deviation_up_list = []
+    deviation_down_list = []
+    pivot_ups_array = []
+    pivot_downs_array = []
     
-    for i in range(5, len(df) - 5):
-        # Check if this is a pivot high
-        if all(ohlc_spread.iloc[i] > ohlc_spread.iloc[i-j] for j in range(1, 6)) and \
-           all(ohlc_spread.iloc[i] > ohlc_spread.iloc[i+j] for j in range(1, 6)):
-            if df['Low'].iloc[i] > upper_band.iloc[i]:
-                pivot_ups.append(ohlc_spread.iloc[i])
+    # Store results for each bar
+    threshold_upper_values = []
+    threshold_lower_values = []
+    median_pivot_up_values = []
+    median_pivot_down_values = []
+    dir_switch_values = [0]  # Start with 0
+    
+    for i in range(len(df)):
+        # ---------------------------------------------------------------------
+        # STEP 1: Update deviation arrays (threshold band calculation)
+        # ---------------------------------------------------------------------
+        if pd.notna(fair_price_smooth.iloc[i]):
+            if df['Low'].iloc[i] < fair_price_smooth.iloc[i] and df['High'].iloc[i] > fair_price_smooth.iloc[i]:
+                deviation_up_list.append(high_spread.iloc[i])
+                deviation_down_list.append(low_spread.iloc[i])
+                # Limit to 1000 like PineScript
+                if len(deviation_up_list) > 1000:
+                    deviation_up_list.pop(0)
+                if len(deviation_down_list) > 1000:
+                    deviation_down_list.pop(0)
         
-        # Check if this is a pivot low
-        if all(ohlc_spread.iloc[i] < ohlc_spread.iloc[i-j] for j in range(1, 6)) and \
-           all(ohlc_spread.iloc[i] < ohlc_spread.iloc[i+j] for j in range(1, 6)):
-            if df['High'].iloc[i] < lower_band.iloc[i]:
-                pivot_downs.append(ohlc_spread.iloc[i])
+        # Calculate median deviations
+        median_up_dev = np.median(deviation_up_list) if len(deviation_up_list) > 0 else 1.0
+        median_down_dev = np.median(deviation_down_list) if len(deviation_down_list) > 0 else 1.0
+        
+        # Threshold bands
+        upper_band = fair_price_smooth.iloc[i] * median_up_dev
+        lower_band = fair_price_smooth.iloc[i] * median_down_dev
+        
+        band_up_spread = upper_band - fair_price_smooth.iloc[i]
+        band_down_spread = fair_price_smooth.iloc[i] - lower_band
+        
+        upper_band_boosted = fair_price_smooth.iloc[i] + (band_up_spread * threshold_boost)
+        lower_band_boosted = fair_price_smooth.iloc[i] - (band_down_spread * threshold_boost)
+        
+        threshold_upper_values.append(upper_band_boosted)
+        threshold_lower_values.append(lower_band_boosted)
+        
+        # ---------------------------------------------------------------------
+        # STEP 2: Detect and record pivots (deviation band calculation)
+        # ---------------------------------------------------------------------
+        if i >= 5 and i < len(df) - 5:
+            # Pivot high detection
+            is_pivot_high = all(ohlc_spread.iloc[i] >= ohlc_spread.iloc[i-j] for j in range(1, 6)) and \
+                            all(ohlc_spread.iloc[i] >= ohlc_spread.iloc[i+j] for j in range(1, 6))
+            
+            # Pivot low detection
+            is_pivot_low = all(ohlc_spread.iloc[i] <= ohlc_spread.iloc[i-j] for j in range(1, 6)) and \
+                           all(ohlc_spread.iloc[i] <= ohlc_spread.iloc[i+j] for j in range(1, 6))
+            
+            # Only add pivot if price is outside threshold bands
+            if is_pivot_high and not pd.isna(ohlc_spread.iloc[i]):
+                if df['Low'].iloc[i] > upper_band_boosted:
+                    pivot_ups_array.append(ohlc_spread.iloc[i])
+                    if len(pivot_ups_array) > 2000:
+                        pivot_ups_array.pop(0)
+            
+            if is_pivot_low and not pd.isna(ohlc_spread.iloc[i]):
+                if df['High'].iloc[i] < lower_band_boosted:
+                    pivot_downs_array.append(ohlc_spread.iloc[i])
+                    if len(pivot_downs_array) > 2000:
+                        pivot_downs_array.pop(0)
+        
+        # Calculate median pivots
+        median_pivot_up = np.median(pivot_ups_array) if len(pivot_ups_array) > 0 else 1.02
+        median_pivot_down = np.median(pivot_downs_array) if len(pivot_downs_array) > 0 else 0.98
+        
+        median_pivot_up_values.append(median_pivot_up)
+        median_pivot_down_values.append(median_pivot_down)
+        
+        # ---------------------------------------------------------------------
+        # STEP 3: Trend direction
+        # ---------------------------------------------------------------------
+        if i > 0:
+            if trend_mode == 'Cross':
+                trend_rule_up = threshold_up_src.iloc[i] > upper_band_boosted
+                trend_rule_down = threshold_down_src.iloc[i] < lower_band_boosted
+            else:  # Direction
+                trend_rule_up = fair_price_smooth.iloc[i] > fair_price_smooth.iloc[i-1]
+                trend_rule_down = fair_price_smooth.iloc[i] < fair_price_smooth.iloc[i-1]
+            
+            if trend_rule_down:
+                dir_switch_values.append(-1)
+            elif trend_rule_up:
+                dir_switch_values.append(1)
+            else:
+                dir_switch_values.append(dir_switch_values[-1])
     
-    # Calculate median pivots (limit to last 2000)
-    median_pivot_up = np.median(pivot_ups[-2000:]) if pivot_ups else 1.02
-    median_pivot_down = np.median(pivot_downs[-2000:]) if pivot_downs else 0.98
+    # Store all calculated values
+    result['threshold_upper'] = threshold_upper_values
+    result['threshold_lower'] = threshold_lower_values
+    result['trend_direction'] = dir_switch_values
     
-    # Deviation bands (1x and 2x)
-    pivot_band_up_base = fair_price_smooth * median_pivot_up
-    pivot_band_down_base = fair_price_smooth * median_pivot_down
+    # Convert median pivots to series
+    median_pivot_up_series = pd.Series(median_pivot_up_values, index=df.index)
+    median_pivot_down_series = pd.Series(median_pivot_down_values, index=df.index)
+    
+    # Deviation bands (1x and 2x) - matching PineScript exactly
+    pivot_band_up_base = fair_price_smooth * median_pivot_up_series
+    pivot_band_down_base = fair_price_smooth * median_pivot_down_series
     
     p_band_up_spread = (pivot_band_up_base - fair_price_smooth) * deviation_boost
     p_band_down_spread = (fair_price_smooth - pivot_band_down_base) * deviation_boost
     
+    # 1x bands
     result['deviation_upper_1x'] = fair_price_smooth + p_band_up_spread
     result['deviation_lower_1x'] = fair_price_smooth - p_band_down_spread
+    
+    # 2x bands (add spread again, exactly like PineScript)
     result['deviation_upper_2x'] = result['deviation_upper_1x'] + p_band_up_spread
     result['deviation_lower_2x'] = result['deviation_lower_1x'] - p_band_down_spread
     
