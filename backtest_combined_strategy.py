@@ -234,14 +234,16 @@ def run_backtest(symbol='AAPL',
     # Process events sequentially
     for event in all_events:
         if 'weekly_bx' in event:  # This is an entry signal
+            # Only enter if NO active trade OR previous trade is fully closed
             if active_trade is None or active_trade.is_closed:
-                # Open new trade
+                # Open new trade (only one position at a time)
                 active_trade = Trade(
                     entry_date=event['date'],
                     entry_price=event['price'],
                     entry_signal=event
                 )
                 trades.append(active_trade)
+            # else: Skip this entry signal - already in a trade
         
         elif active_trade and not active_trade.is_closed:  # This is an exit signal
             # Only process exits after entry
