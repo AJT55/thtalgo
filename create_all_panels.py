@@ -438,24 +438,38 @@ def create_all_panels_chart(symbol='AAPL'):
     
     monthly_colors = []
     monthly_display_dates = []
+    monthly_hover = []
     
     for i in range(len(monthly_bx)):
         bx = monthly_bx['short_term_xtrender'].iloc[i]
+        yf_index = monthly_bx.index[i]
         
         # DISPLAY date = actual month represented (shift -1 month from yfinance index)
-        display_date = monthly_bx.index[i] - pd.DateOffset(months=1)
+        display_date = yf_index - pd.DateOffset(months=1)
         monthly_display_dates.append(display_date)
         
         if i == 0:
             color = 'rgba(0,255,0,0.6)' if bx > 0 else 'rgba(255,0,0,0.6)'
+            color_name = 'Light Green' if bx > 0 else 'Light Red'
+            prev_bx = 0
         else:
             prev_bx = monthly_bx['short_term_xtrender'].iloc[i-1]
             is_increasing = bx > prev_bx
             if bx > 0:
                 color = 'rgba(0,255,0,0.7)' if is_increasing else 'rgba(0,100,0,0.7)'
+                color_name = 'Light Green' if is_increasing else 'Dark Green'
             else:
                 color = 'rgba(255,100,100,0.7)' if is_increasing else 'rgba(139,0,0,0.7)'
+                color_name = 'Light Red' if is_increasing else 'Dark Red'
+        
         monthly_colors.append(color)
+        monthly_hover.append(
+            f"<b>{display_date.strftime('%B %Y')}</b><br>"
+            f"BX: {bx:.2f}<br>"
+            f"Prev: {prev_bx:.2f}<br>"
+            f"Color: {color_name}<br>"
+            f"(YF Index: {yf_index.strftime('%Y-%m-%d')})"
+        )
     
     fig.add_trace(
         go.Bar(
@@ -463,7 +477,9 @@ def create_all_panels_chart(symbol='AAPL'):
             y=monthly_bx['short_term_xtrender'],
             marker=dict(color=monthly_colors),
             name='Monthly BX',
-            showlegend=False
+            showlegend=False,
+            hovertext=monthly_hover,
+            hoverinfo='text'
         ),
         row=5, col=1
     )

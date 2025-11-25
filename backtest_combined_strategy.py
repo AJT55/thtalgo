@@ -160,10 +160,10 @@ def run_backtest(symbol='AAPL',
             else:
                 next_monthly_date = weekly_bx.index[-1]
             
-            # Find weekly signals in NEXT month
+            # Find weekly signals in NEXT month (use >= to include first weekly bar)
             weekly_in_range = weekly_bx[
-                (weekly_bx.index > monthly_close_date) & 
-                (weekly_bx.index <= next_monthly_date)
+                (weekly_bx.index >= next_monthly_date) & 
+                (weekly_bx.index < (monthly_bx.index[i + 2] if i + 2 < len(monthly_bx) else next_monthly_date + pd.DateOffset(months=1)))
             ]
             
             for weekly_date in weekly_in_range.index:
