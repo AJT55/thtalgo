@@ -1,6 +1,6 @@
-# B-Xtrender Trading System
+# Fair Value Bands Trading System
 
-Multi-timeframe trading signal generator with B-Xtrender and Fair Value Bands indicators.
+Exit signal generator using Fair Value Bands.
 
 ## Installation
 
@@ -13,14 +13,12 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python bxtrender_panel.py
+python fair_value_bands_signals.py
 ```
 
-Generates interactive HTML chart with:
-- Weekly & Monthly price charts with Fair Value Bands overlay
-- B-Xtrender histograms (color-coded momentum)
-- Entry signal markers based on multi-timeframe alignment
+## Exit Strategy
 
-## Configuration
+- **100% Exit**: Daily close breaks 2x deviation band
+- **50% Exit**: Weekly close breaks 1x deviation band
 
-Edit `config.py` to customize B-Xtrender and Fair Value Bands parameters.
+All signals wait for candle close confirmation.
