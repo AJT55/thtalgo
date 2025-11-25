@@ -316,20 +316,82 @@ def run_backtest(symbol='AAPL',
     print("\nCreating backtest visualization...")
     
     fig = make_subplots(
-        rows=4, cols=1,
+        rows=5, cols=1,
         shared_xaxes=False,
-        vertical_spacing=0.06,
+        vertical_spacing=0.05,
         subplot_titles=(
+            f'{symbol} Daily Price + Fair Value Bands (100% Exits)',
             f'{symbol} Weekly Price - Entry & Exit Signals',
             f'{symbol} Weekly B-Xtrender - Entry Confirmation',
             f'{symbol} Monthly B-Xtrender - Entry Confirmation',
             'Cumulative P&L (%) - Equity Curve'
         ),
-        row_heights=[0.30, 0.25, 0.20, 0.25]
+        row_heights=[0.25, 0.25, 0.20, 0.15, 0.15]
     )
     
     # ====================================================================
-    # PANEL 1: Weekly Price with Entry/Exit Signals
+    # PANEL 1: Daily Price with Fair Value Bands
+    # ====================================================================
+    
+    # Trim daily to last 10 years for display
+    ten_years_ago = daily_fvb.index[-1] - pd.DateOffset(years=10)
+    daily_display = daily_fvb[daily_fvb.index >= ten_years_ago]
+    
+    # Candlesticks
+    fig.add_trace(
+        go.Candlestick(
+            x=daily_display.index,
+            open=daily_display['Open'],
+            high=daily_display['High'],
+            low=daily_display['Low'],
+            close=daily_display['Close'],
+            name='Daily Price',
+            showlegend=False
+        ),
+        row=1, col=1
+    )
+    
+    # Fair Value
+    fig.add_trace(
+        go.Scatter(
+            x=daily_display.index,
+            y=daily_display['fair_value'],
+            mode='lines',
+            name='Fair Value',
+            line=dict(color='blue', width=1),
+            showlegend=True
+        ),
+        row=1, col=1
+    )
+    
+    # 1x Upper
+    fig.add_trace(
+        go.Scatter(
+            x=daily_display.index,
+            y=daily_display['deviation_upper_1x'],
+            mode='lines',
+            name='1x Upper',
+            line=dict(color='rgb(196,177,101)', width=1, dash='dash'),
+            showlegend=True
+        ),
+        row=1, col=1
+    )
+    
+    # 2x Upper
+    fig.add_trace(
+        go.Scatter(
+            x=daily_display.index,
+            y=daily_display['deviation_upper_2x'],
+            mode='lines',
+            name='2x Upper (100%)',
+            line=dict(color='rgb(255,107,107)', width=1.5, dash='dot'),
+            showlegend=True
+        ),
+        row=1, col=1
+    )
+    
+    # ====================================================================
+    # PANEL 2: Weekly Price with Entry/Exit Signals
     # ====================================================================
     
     # Candlesticks
@@ -343,7 +405,7 @@ def run_backtest(symbol='AAPL',
             name='Weekly Price',
             showlegend=False
         ),
-        row=1, col=1
+        row=2, col=1
     )
     
     # Fair Value
@@ -354,9 +416,9 @@ def run_backtest(symbol='AAPL',
             mode='lines',
             name='Fair Value',
             line=dict(color='blue', width=1.5),
-            showlegend=True
+            showlegend=False
         ),
-        row=1, col=1
+        row=2, col=1
     )
     
     # 1x Upper Band
@@ -367,9 +429,9 @@ def run_backtest(symbol='AAPL',
             mode='lines',
             name='1x Upper (50% Exit)',
             line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
-            showlegend=True
+            showlegend=False
         ),
-        row=1, col=1
+        row=2, col=1
     )
     
     # 2x Upper Band
@@ -380,9 +442,9 @@ def run_backtest(symbol='AAPL',
             mode='lines',
             name='2x Upper',
             line=dict(color='rgb(255,107,107)', width=1.5, dash='dot'),
-            showlegend=True
+            showlegend=False
         ),
-        row=1, col=1
+        row=2, col=1
     )
     
     # Entry signals
@@ -404,7 +466,7 @@ def run_backtest(symbol='AAPL',
                 name='Entry',
                 showlegend=True
             ),
-            row=1, col=1
+            row=2, col=1
         )
     
     # Exit signals on weekly chart
@@ -435,11 +497,11 @@ def run_backtest(symbol='AAPL',
                     hoverinfo='text',
                     showlegend=False
                 ),
-                row=1, col=1
+                row=2, col=1
             )
     
     # ====================================================================
-    # PANEL 2: Weekly B-Xtrender Histogram
+    # PANEL 3: Weekly B-Xtrender Histogram
     # ====================================================================
     
     # Color-coded bars
@@ -468,7 +530,7 @@ def run_backtest(symbol='AAPL',
             name='Weekly BX',
             showlegend=False
         ),
-        row=2, col=1
+        row=3, col=1
     )
     
     # Mark entry signals on histogram
@@ -486,11 +548,11 @@ def run_backtest(symbol='AAPL',
                 marker=dict(symbol='star', size=12, color='lime', line=dict(width=2, color='darkgreen')),
                 showlegend=False
             ),
-            row=2, col=1
+            row=3, col=1
         )
     
     # ====================================================================
-    # PANEL 3: Monthly B-Xtrender Histogram
+    # PANEL 4: Monthly B-Xtrender Histogram
     # ====================================================================
     
     # Color-coded bars
@@ -519,11 +581,11 @@ def run_backtest(symbol='AAPL',
             name='Monthly BX',
             showlegend=False
         ),
-        row=3, col=1
+        row=4, col=1
     )
     
     # ====================================================================
-    # PANEL 4: Equity Curve (Cumulative P&L)
+    # PANEL 5: Equity Curve (Cumulative P&L)
     # ====================================================================
     
     if completed_trades:
@@ -549,11 +611,11 @@ def run_backtest(symbol='AAPL',
                 fillcolor='rgba(0,255,0,0.1)',
                 showlegend=False
             ),
-            row=4, col=1
+            row=5, col=1
         )
         
         # Add zero line
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", row=4, col=1)
+        fig.add_hline(y=0, line_dash="dash", line_color="gray", row=5, col=1)
     
     # ====================================================================
     # Layout
@@ -566,7 +628,7 @@ def run_backtest(symbol='AAPL',
             x=0.5,
             xanchor='center'
         ),
-        height=1400,
+        height=1600,
         showlegend=True,
         plot_bgcolor='white',
         paper_bgcolor='white',
@@ -576,11 +638,12 @@ def run_backtest(symbol='AAPL',
         xaxis4_rangeslider_visible=False
     )
     
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_yaxes(title_text="Weekly BX", row=2, col=1)
-    fig.update_yaxes(title_text="Monthly BX", row=3, col=1)
-    fig.update_yaxes(title_text="Cumulative P&L (%)", row=4, col=1)
-    fig.update_xaxes(title_text="Date", row=4, col=1)
+    fig.update_yaxes(title_text="Daily Price", row=1, col=1)
+    fig.update_yaxes(title_text="Weekly Price", row=2, col=1)
+    fig.update_yaxes(title_text="Weekly BX", row=3, col=1)
+    fig.update_yaxes(title_text="Monthly BX", row=4, col=1)
+    fig.update_yaxes(title_text="Cumulative P&L (%)", row=5, col=1)
+    fig.update_xaxes(title_text="Date", row=5, col=1)
     
     # Save
     import datetime
