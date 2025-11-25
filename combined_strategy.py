@@ -70,8 +70,10 @@ def generate_combined_signals(symbol='AAPL',
     data_handler = DataHandler()
     
     # Daily data (for Fair Value Bands exits)
-    daily_data = data_handler.get_data(symbol, period=daily_period, interval='1d')
-    print(f"✓ Loaded {len(daily_data)} daily bars")
+    # Load 10 years for proper band calculation, but we'll only display last 2 years
+    daily_data_full = data_handler.get_data(symbol, period='10y', interval='1d')
+    daily_data = daily_data_full  # Use full dataset for calculation
+    print(f"✓ Loaded {len(daily_data)} daily bars (10y for proper FVB calculation)")
     
     # Weekly data (for B-Xtrender signals + FVB 50% exits)
     weekly_data = data_handler.get_data(symbol, period=weekly_period, interval='1wk')
@@ -93,9 +95,14 @@ def generate_combined_signals(symbol='AAPL',
     monthly_bx = calculate_bxtrender(monthly_data, **BX_TRENDER_PARAMS)
     print("✓ Monthly B-Xtrender calculated")
     
-    # Fair Value Bands on daily and weekly
+    # Fair Value Bands on daily and weekly (use full historical data)
     daily_fvb = calculate_fair_value_bands(daily_data, **FAIR_VALUE_PARAMS)
     print("✓ Daily Fair Value Bands calculated")
+    
+    # Trim daily data to last 2 years for display (but keep full calculations)
+    two_years_ago = daily_fvb.index[-1] - pd.DateOffset(years=2)
+    daily_fvb_display = daily_fvb[daily_fvb.index >= two_years_ago]
+    print(f"✓ Daily display trimmed to last 2 years ({len(daily_fvb_display)} bars)")
     
     weekly_fvb = calculate_fair_value_bands(weekly_data, **FAIR_VALUE_PARAMS)
     print("✓ Weekly Fair Value Bands calculated")
@@ -179,7 +186,7 @@ def generate_combined_signals(symbol='AAPL',
     exit_50_signals = []   # 50% exits (weekly 1x band)
     stop_loss_signals = [] # Stop loss (weekly BX dark red)
     
-    # 100% Exit: Daily close above 2x upper band
+    # 100% Exit: Daily close above 2x upper band (check full dataset)
     for date in daily_fvb.index:
         close_price = daily_fvb.loc[date, 'Close']
         upper_2x = daily_fvb.loc[date, 'deviation_upper_2x']
@@ -247,14 +254,14 @@ def generate_combined_signals(symbol='AAPL',
     # PANEL 1: Daily Price + Fair Value Bands (100% Exits)
     # ====================================================================
     
-    # Candlesticks
+    # Candlesticks (display only last 2 years)
     fig.add_trace(
         go.Candlestick(
-            x=daily_fvb.index,
-            open=daily_fvb['Open'],
-            high=daily_fvb['High'],
-            low=daily_fvb['Low'],
-            close=daily_fvb['Close'],
+            x=daily_fvb_display.index,
+            open=daily_fvb_display['Open'],
+            high=daily_fvb_display['High'],
+            low=daily_fvb_display['Low'],
+            close=daily_fvb_display['Close'],
             name='Daily Price',
             showlegend=False
         ),
@@ -264,8 +271,8 @@ def generate_combined_signals(symbol='AAPL',
     # Fair Value
     fig.add_trace(
         go.Scatter(
-            x=daily_fvb.index,
-            y=daily_fvb['fair_value'],
+            x=daily_fvb_display.index,
+            y=daily_fvb_display['fair_value'],
             mode='lines',
             name='Fair Value',
             line=dict(color='blue', width=1.5),
@@ -277,8 +284,8 @@ def generate_combined_signals(symbol='AAPL',
     # 1x Upper
     fig.add_trace(
         go.Scatter(
-            x=daily_fvb.index,
-            y=daily_fvb['deviation_upper_1x'],
+            x=daily_fvb_display.index,
+            y=daily_fvb_display['deviation_upper_1x'],
             mode='lines',
             name='1x Upper',
             line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
@@ -290,8 +297,8 @@ def generate_combined_signals(symbol='AAPL',
     # 2x Upper
     fig.add_trace(
         go.Scatter(
-            x=daily_fvb.index,
-            y=daily_fvb['deviation_upper_2x'],
+            x=daily_fvb_display.index,
+            y=daily_fvb_display['deviation_upper_2x'],
             mode='lines',
             name='2x Upper (100% Exit)',
             line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
@@ -300,27 +307,29 @@ def generate_combined_signals(symbol='AAPL',
         row=1, col=1
     )
     
-    # 100% Exit Stars
+    # 100% Exit Stars (filter to display range)
     if exit_100_signals:
-        fig.add_trace(
-            go.Scatter(
-                x=[s['date'] for s in exit_100_signals],
-                y=[s['price'] for s in exit_100_signals],
-                mode='markers',
-                marker=dict(
-                    symbol='star',
-                    size=12,
-                    color='red',
-                    line=dict(width=2, color='darkred')
+        exit_100_display = [s for s in exit_100_signals if s['date'] >= two_years_ago]
+        if exit_100_display:
+            fig.add_trace(
+                go.Scatter(
+                    x=[s['date'] for s in exit_100_display],
+                    y=[s['price'] for s in exit_100_display],
+                    mode='markers',
+                    marker=dict(
+                        symbol='star',
+                        size=12,
+                        color='red',
+                        line=dict(width=2, color='darkred')
+                    ),
+                    text=[f"100% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" 
+                          for s in exit_100_display],
+                    hoverinfo='text',
+                    name='100% Exit',
+                    showlegend=True
                 ),
-                text=[f"100% EXIT<br>{s['date'].strftime('%Y-%m-%d')}<br>${s['price']:.2f}" 
-                      for s in exit_100_signals],
-                hoverinfo='text',
-                name='100% Exit',
-                showlegend=True
-            ),
-            row=1, col=1
-        )
+                row=1, col=1
+            )
     
     # ====================================================================
     # PANEL 2: Weekly Price + Fair Value Bands + Entry Signals
