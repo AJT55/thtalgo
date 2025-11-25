@@ -70,10 +70,13 @@ def generate_combined_signals(symbol='AAPL',
     data_handler = DataHandler()
     
     # Daily data (for Fair Value Bands exits)
-    # Load 10 years for proper band calculation, but we'll only display last 2 years
-    daily_data_full = data_handler.get_data(symbol, period='10y', interval='1d')
-    daily_data = daily_data_full  # Use full dataset for calculation
-    print(f"✓ Loaded {len(daily_data)} daily bars (10y for proper FVB calculation)")
+    # Load MAX historical data for proper band calculation
+    daily_data = data_handler.get_data(symbol, period='max', interval='1d')
+    print(f"✓ Loaded {len(daily_data)} daily bars (max history for proper FVB calculation)")
+    
+    # Trim to last 10 years for display
+    ten_years_ago = daily_data.index[-1] - pd.DateOffset(years=10)
+    daily_data_display_start = ten_years_ago
     
     # Weekly data (for B-Xtrender signals + FVB 50% exits)
     weekly_data = data_handler.get_data(symbol, period=weekly_period, interval='1wk')
@@ -99,9 +102,9 @@ def generate_combined_signals(symbol='AAPL',
     daily_fvb = calculate_fair_value_bands(daily_data, **FAIR_VALUE_PARAMS)
     print("✓ Daily Fair Value Bands calculated")
     
-    # Use full 10 years for display
-    daily_fvb_display = daily_fvb
-    print(f"✓ Displaying all {len(daily_fvb_display)} daily bars")
+    # Trim daily display to last 10 years
+    daily_fvb_display = daily_fvb[daily_fvb.index >= daily_data_display_start]
+    print(f"✓ Displaying last 10 years ({len(daily_fvb_display)} daily bars)")
     
     weekly_fvb = calculate_fair_value_bands(weekly_data, **FAIR_VALUE_PARAMS)
     print("✓ Weekly Fair Value Bands calculated")
