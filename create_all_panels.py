@@ -299,23 +299,49 @@ def create_all_panels_chart(symbol='AAPL'):
     
     # Trades with numbers
     if trades:
-        # Entries
-        fig.add_trace(
-            go.Scatter(
-                x=[t.entry_date for t in trades],
-                y=[t.entry_price for t in trades],
-                mode='markers+text',
-                marker=dict(symbol='star', size=15, color='lime', line=dict(width=2, color='darkgreen')),
-                text=[f"#{i+1}" for i in range(len(trades))],
-                textposition='top center',
-                textfont=dict(size=10, color='darkgreen', family='Arial Black'),
-                hovertext=[f"ENTRY #{i+1}<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for i, t in enumerate(trades)],
-                hoverinfo='text',
-                name='Entry',
-                showlegend=True
-            ),
-            row=3, col=1
-        )
+        # Separate completed and active trades
+        completed = [t for t in trades if t.is_closed]
+        active = [t for t in trades if not t.is_closed]
+        
+        # Completed Entries
+        if completed:
+            completed_indices = [i+1 for i, t in enumerate(trades) if t.is_closed]
+            fig.add_trace(
+                go.Scatter(
+                    x=[t.entry_date for t in completed],
+                    y=[t.entry_price for t in completed],
+                    mode='markers+text',
+                    marker=dict(symbol='star', size=15, color='lime', line=dict(width=2, color='darkgreen')),
+                    text=[f"#{completed_indices[i]}" for i in range(len(completed))],
+                    textposition='top center',
+                    textfont=dict(size=10, color='darkgreen', family='Arial Black'),
+                    hovertext=[f"ENTRY #{completed_indices[i]}<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for i, t in enumerate(completed)],
+                    hoverinfo='text',
+                    name='Entry (Closed)',
+                    showlegend=True
+                ),
+                row=3, col=1
+            )
+        
+        # Active Entries (different color)
+        if active:
+            active_indices = [i+1 for i, t in enumerate(trades) if not t.is_closed]
+            fig.add_trace(
+                go.Scatter(
+                    x=[t.entry_date for t in active],
+                    y=[t.entry_price for t in active],
+                    mode='markers+text',
+                    marker=dict(symbol='star', size=15, color='gold', line=dict(width=2, color='orange')),
+                    text=[f"#{active_indices[i]}" for i in range(len(active))],
+                    textposition='top center',
+                    textfont=dict(size=10, color='orange', family='Arial Black'),
+                    hovertext=[f"ENTRY #{active_indices[i]} (ACTIVE)<br>{t.entry_date.strftime('%Y-%m-%d')}<br>${t.entry_price:.2f}" for i, t in enumerate(active)],
+                    hoverinfo='text',
+                    name='Entry (Active)',
+                    showlegend=True
+                ),
+                row=3, col=1
+            )
         
         # 50% Exits
         exits_50 = [{'date': e['date'], 'price': e['price'], 'trade_num': i+1} 
@@ -411,8 +437,15 @@ def create_all_panels_chart(symbol='AAPL'):
     # ====================================================================
     
     monthly_colors = []
+    monthly_display_dates = []
+    
     for i in range(len(monthly_bx)):
         bx = monthly_bx['short_term_xtrender'].iloc[i]
+        
+        # DISPLAY date = actual month represented (shift -1 month from yfinance index)
+        display_date = monthly_bx.index[i] - pd.DateOffset(months=1)
+        monthly_display_dates.append(display_date)
+        
         if i == 0:
             color = 'rgba(0,255,0,0.6)' if bx > 0 else 'rgba(255,0,0,0.6)'
         else:
@@ -426,7 +459,7 @@ def create_all_panels_chart(symbol='AAPL'):
     
     fig.add_trace(
         go.Bar(
-            x=monthly_bx.index,
+            x=monthly_display_dates,  # Use shifted dates for DISPLAY
             y=monthly_bx['short_term_xtrender'],
             marker=dict(color=monthly_colors),
             name='Monthly BX',
@@ -466,11 +499,20 @@ def create_all_panels_chart(symbol='AAPL'):
         
         fig.add_hline(y=0, line_dash="dash", line_color="gray", row=6, col=1)
     
+    # Count active vs completed
+    completed_count = len([t for t in trades if t.is_closed])
+    active_count = len([t for t in trades if not t.is_closed])
+    
     # Layout
+    title_text = f'{symbol} - ALL-IN-ONE STRATEGY VIEW<br>'
+    if stats:
+        title_text += f'<sub>Completed: {completed_count} | Active: {active_count} | Win Rate: {stats["win_rate"]:.1f}% | Total P&L: +{stats["total_pnl"]:.1f}%</sub>'
+    else:
+        title_text += f'<sub>Total Trades: {len(trades)} (All Active)</sub>'
+    
     fig.update_layout(
         title=dict(
-            text=f'{symbol} - ALL-IN-ONE STRATEGY VIEW<br>'
-                 f'<sub>Win Rate: {stats["win_rate"]:.1f}% | Total P&L: +{stats["total_pnl"]:.1f}%</sub>',
+            text=title_text,
             x=0.5,
             xanchor='center'
         ),
@@ -510,26 +552,51 @@ def create_all_panels_chart(symbol='AAPL'):
     for i, trade in enumerate(trades, 1):
         pnl = trade.calculate_pnl()
         pnl_color = 'green' if pnl > 0 else 'red' if pnl < 0 else 'gray'
-        row_bg = '#f9f9f9' if i % 2 == 0 else 'white'
+        
+        # Check if trade is active
+        is_active = not trade.is_closed
+        row_bg = '#fffacd' if is_active else ('#f9f9f9' if i % 2 == 0 else 'white')  # Yellow highlight for active
         
         # Build exit events column
         exit_events = ""
-        for exit_info in trade.exits:
-            exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
-            exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
-            exit_events += f"""
-            <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
-                <strong style="color: {exit_color};">{exit_type}</strong>: 
-                {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
-            </div>
-            """
+        if is_active and not trade.exits:
+            exit_events = '<div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(255,215,0,0.3); border-radius: 4px;"><strong style="color: #b8860b;">🔄 ACTIVE</strong>: Position still open</div>'
+        elif is_active:
+            for exit_info in trade.exits:
+                exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
+                exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
+                exit_events += f"""
+                <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                    <strong style="color: {exit_color};">{exit_type}</strong>: 
+                    {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                </div>
+                """
+            exit_events += '<div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(255,215,0,0.3); border-radius: 4px;"><strong style="color: #b8860b;">🔄 ACTIVE</strong>: 50% position still open</div>'
+        else:
+            for exit_info in trade.exits:
+                exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
+                exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
+                exit_events += f"""
+                <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                    <strong style="color: {exit_color};">{exit_type}</strong>: 
+                    {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                </div>
+                """
         
         # Calculate duration
         if trade.exits:
             final_exit_date = max([e['date'] for e in trade.exits])
             duration_days = (final_exit_date - trade.entry_date).days
         else:
-            duration_days = 0
+            # Active trade - calculate from entry to today
+            from datetime import datetime
+            duration_days = (datetime.now() - trade.entry_date).days
+        
+        # Format P&L display
+        if is_active:
+            pnl_display = f"{pnl:+.2f}% (unrealized)"
+        else:
+            pnl_display = f"{pnl:+.2f}%"
         
         trade_table_html += f"""
                 <tr style="background-color: {row_bg};">
@@ -538,7 +605,7 @@ def create_all_panels_chart(symbol='AAPL'):
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${trade.entry_price:.2f}</td>
                     <td style="padding: 12px; border: 1px solid #ddd;">{exit_events}</td>
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: {pnl_color};">
-                        {pnl:+.2f}%
+                        {pnl_display}
                     </td>
                     <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">{duration_days} days</td>
                 </tr>

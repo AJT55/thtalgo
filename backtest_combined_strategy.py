@@ -276,10 +276,13 @@ def run_backtest(symbol='AAPL',
                         exit_reason='Stop Loss (BX Dark Red)'
                     )
     
-    # Filter to only completed trades
+    # Separate completed and active trades
     completed_trades = [t for t in trades if t.is_closed]
+    active_trades = [t for t in trades if not t.is_closed]
     
     print(f"✓ Simulated {len(completed_trades)} completed trades")
+    if active_trades:
+        print(f"✓ Found {len(active_trades)} active (incomplete) trade(s)")
     
     # ========================================================================
     # STEP 5: Calculate Statistics
@@ -697,7 +700,8 @@ def run_backtest(symbol='AAPL',
     
     fig.show()
     
-    return fig, completed_trades, statistics
+    # Return ALL trades (completed + active) for visualization
+    return fig, trades, statistics
 
 
 if __name__ == "__main__":
