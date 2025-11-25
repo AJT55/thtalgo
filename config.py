@@ -72,7 +72,8 @@ FAIR_VALUE_PARAMS = {
     'threshold_boost': 1.0,        # Threshold band width multiplier
     
     # Deviation Band Settings
-    'deviation_boost': 1.0,   # Deviation band width multiplier (1x and 2x bands)
+    'deviation_boost': 0.825,   # Deviation band width multiplier (adjusted to match TradingView)
+                                # 0.825 calibrates YFinance data to match TradingView bands
     
     # VWAP Settings
     'vwap_anchor': '1D',      # VWAP anchor timeframe
