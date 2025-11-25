@@ -210,6 +210,31 @@ def generate_fvb_signals(symbol='AAPL',
         row=1, col=1
     )
     
+    # 1x Deviation Bands
+    fig.add_trace(
+        go.Scatter(
+            x=daily_fvb.index,
+            y=daily_fvb['deviation_upper_1x'],
+            mode='lines',
+            name='1x Upper',
+            line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
+            showlegend=True
+        ),
+        row=1, col=1
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=daily_fvb.index,
+            y=daily_fvb['deviation_lower_1x'],
+            mode='lines',
+            name='1x Lower',
+            line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
+            showlegend=True
+        ),
+        row=1, col=1
+    )
+    
     # 2x Deviation Bands (for 100% exit)
     fig.add_trace(
         go.Scatter(
@@ -217,7 +242,7 @@ def generate_fvb_signals(symbol='AAPL',
             y=daily_fvb['deviation_upper_2x'],
             mode='lines',
             name='2x Upper (100% Exit)',
-            line=dict(color='rgb(255,107,107)', width=1.5, dash='dot'),
+            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
             showlegend=True
         ),
         row=1, col=1
@@ -229,7 +254,7 @@ def generate_fvb_signals(symbol='AAPL',
             y=daily_fvb['deviation_lower_2x'],
             mode='lines',
             name='2x Lower (100% Exit)',
-            line=dict(color='rgb(255,107,107)', width=1.5, dash='dot'),
+            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
             showlegend=True
         ),
         row=1, col=1
@@ -333,6 +358,31 @@ def generate_fvb_signals(symbol='AAPL',
             mode='lines',
             name='1x Lower (50% Exit)',
             line=dict(color='rgb(196,177,101)', width=1.5, dash='dash'),
+            showlegend=True
+        ),
+        row=2, col=1
+    )
+    
+    # 2x Deviation Bands (for reference on weekly)
+    fig.add_trace(
+        go.Scatter(
+            x=weekly_fvb.index,
+            y=weekly_fvb['deviation_upper_2x'],
+            mode='lines',
+            name='2x Upper',
+            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
+            showlegend=True
+        ),
+        row=2, col=1
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=weekly_fvb.index,
+            y=weekly_fvb['deviation_lower_2x'],
+            mode='lines',
+            name='2x Lower',
+            line=dict(color='rgb(255,107,107)', width=2, dash='dot'),
             showlegend=True
         ),
         row=2, col=1
