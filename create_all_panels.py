@@ -757,5 +757,5 @@ def create_all_panels_chart(symbol='AAPL'):
 
 
 if __name__ == "__main__":
-    create_all_panels_chart('AAPL')
+    create_all_panels_chart('TQQQ')
 
