@@ -703,7 +703,75 @@ def create_all_panels_chart(symbol='AAPL'):
                 </tr>
         """
     
-    trade_table_html += """
+    # Add summary statistics row
+    completed_count = len([t for t in trades if t.is_closed])
+    if completed_count > 0:
+        total_pnl_dollars = sum([t.calculate_pnl_dollars() for t in trades if t.is_closed])
+        avg_pnl = sum([t.calculate_pnl() for t in trades if t.is_closed]) / completed_count
+        
+        trade_table_html += f"""
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #34495e; color: white; font-weight: bold;">
+                    <td colspan="3" style="padding: 12px; border: 1px solid #ddd; text-align: right;">TOTALS ({completed_count} completed trades):</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;"></td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${total_pnl_dollars:+,.2f}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">{avg_pnl:+.2f}%</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: center;"></td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div style="margin-top: 40px; padding: 20px; background-color: #ecf0f1; border-radius: 8px;">
+            <h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">📋 DETAILED TRADE LOG (Last 10 Trades)</h3>
+            <div style="font-family: monospace; font-size: 14px; line-height: 1.8;">
+    """
+        
+        # Add last 10 trades in console format
+        for i, trade in enumerate(list(reversed([t for t in trades if t.is_closed]))[:10], 1):
+            pnl = trade.calculate_pnl()
+            pnl_dollars = trade.calculate_pnl_dollars()
+            pnl_color = 'green' if pnl > 0 else 'red'
+            
+            final_exit_date = max([e['date'] for e in trade.exits]) if trade.exits else trade.entry_date
+            duration = (final_exit_date - trade.entry_date).days
+            
+            trade_table_html += f"""
+                <div style="margin-bottom: 20px; padding: 15px; background-color: white; border-radius: 5px; border-left: 4px solid {pnl_color};">
+                    <div style="font-weight: bold; color: #2c3e50;">
+                        Entry: {trade.entry_date.strftime('%Y-%m-%d')} @ ${trade.entry_price:.2f}
+                    </div>
+            """
+            
+            for exit_info in trade.exits:
+                if exit_info['percent'] < 0:
+                    trade_table_html += f"""
+                    <div style="margin-left: 20px; color: green;">
+                        ↻ Re-Entry: {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f} ({abs(exit_info['percent'])*100:.0f}%) - {exit_info['reason']}
+                    </div>
+                    """
+                else:
+                    exit_color = 'orange' if '50%' in exit_info['reason'] else 'red' if '100%' in exit_info['reason'] else 'purple'
+                    trade_table_html += f"""
+                    <div style="margin-left: 20px; color: {exit_color};">
+                        Exit: {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f} ({exit_info['percent']*100:.0f}%) - {exit_info['reason']}
+                    </div>
+                    """
+            
+            trade_table_html += f"""
+                    <div style="margin-top: 10px; font-weight: bold; color: {pnl_color};">
+                        P&L: ${pnl_dollars:+,.2f} ({pnl:+.2f}%) | Duration: {duration} days
+                    </div>
+                </div>
+            """
+        
+        trade_table_html += """
+            </div>
+        </div>
+    </div>
+    """
+    else:
+        trade_table_html += """
             </tbody>
         </table>
     </div>

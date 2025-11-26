@@ -1,0 +1,108 @@
+
+======================================================================
+COMBINED STRATEGY BACKTEST
+======================================================================
+
+Strategy Rules:
+  ENTRY: Monthly + Weekly B-Xtrender light colors
+  EXIT:  Daily 2x FVB (100%) OR Weekly 1x FVB (50%)
+  STOP:  Weekly B-Xtrender dark red
+
+======================================================================
+
+
+======================================================================
+BACKTESTING COMBINED STRATEGY: AAPL
+======================================================================
+
+Loading data...
+✓ Loaded 11331 daily bars
+✓ Loaded 523 weekly bars
+✓ Loaded 120 monthly bars
+
+Calculating indicators...
+✓ All indicators calculated
+
+Identifying entry opportunities...
+✓ Found 136 entry signals
+
+Simulating trades...
+✓ Simulated 21 completed trades
+✓ Found 1 active (incomplete) trade(s)
+
+Calculating performance metrics...
+
+Creating backtest visualization...
+
+✓ Backtest chart saved as backtest_AAPL_20251125_162744.html
+✓ Chart saved as index.html
+
+======================================================================
+BACKTEST RESULTS
+======================================================================
+
+📊 PERFORMANCE SUMMARY:
+----------------------------------------------------------------------
+  Starting Capital: $10,000.00
+  Final Capital: $12,942.54
+  Total P&L: $+2,942.54 (+29.43%)
+  Total Trades: 21
+  Winning Trades: 9
+  Losing Trades: 12
+  Win Rate: 42.9%
+  Average Win: 11.29%
+  Average Loss: -6.02%
+  Average P&L: 1.40%
+  Max Win: 38.47%
+  Max Loss: -11.45%
+  Profit Factor: 1.41
+  Avg Duration: 62 days
+
+📋 TRADE LOG (Last 10 Trades):
+----------------------------------------------------------------------
+
+  Entry: 2022-08-01 @ $162.40
+    Exit: 2022-09-19 @ $147.95 (100%) - Stop Loss (BX Dark Red)
+  P&L: -8.90% | Duration: 49 days
+
+  Entry: 2022-11-07 @ $147.48
+    Exit: 2022-12-05 @ $140.05 (100%) - Stop Loss (BX Dark Red)
+  P&L: -5.04% | Duration: 28 days
+
+  Entry: 2023-02-06 @ $148.77
+    Exit: 2023-04-24 @ $167.41 (50%) - 50% Exit (Weekly 1x)
+    Exit: 2023-08-07 @ $175.66 (50%) - Stop Loss (BX Dark Red)
+  P&L: +15.31% | Duration: 182 days
+
+  Entry: 2023-08-28 @ $187.44
+    Exit: 2023-09-04 @ $176.28 (100%) - Stop Loss (BX Dark Red)
+  P&L: -5.95% | Duration: 7 days
+
+  Entry: 2023-12-04 @ $193.88
+    Exit: 2024-01-01 @ $179.48 (100%) - Stop Loss (BX Dark Red)
+  P&L: -7.42% | Duration: 28 days
+
+  Entry: 2024-01-15 @ $189.77
+    Exit: 2024-01-29 @ $184.11 (100%) - Stop Loss (BX Dark Red)
+  P&L: -2.98% | Duration: 14 days
+
+  Entry: 2024-06-03 @ $195.56
+    Exit: 2024-06-10 @ $211.06 (50%) - 50% Exit (Weekly 1x)
+    Exit: 2024-10-07 @ $226.28 (50%) - Stop Loss (BX Dark Red)
+  P&L: +11.81% | Duration: 126 days
+
+  Entry: 2024-10-14 @ $233.68
+    Exit: 2024-10-28 @ $221.66 (100%) - Stop Loss (BX Dark Red)
+  P&L: -5.14% | Duration: 14 days
+
+  Entry: 2024-12-02 @ $241.75
+    Exit: 2024-12-16 @ $253.34 (50%) - 50% Exit (Weekly 1x)
+    Exit: 2025-01-06 @ $235.78 (50%) - Stop Loss (BX Dark Red)
+  P&L: +1.17% | Duration: 35 days
+
+  Entry: 2025-01-27 @ $234.94
+    Exit: 2025-02-03 @ $226.61 (100%) - Stop Loss (BX Dark Red)
+  P&L: -3.55% | Duration: 7 days
+
+======================================================================
+
