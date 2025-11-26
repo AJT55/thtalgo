@@ -262,6 +262,24 @@ def create_all_panels_chart(symbol='AAPL'):
                 row=2, col=1
             )
             
+        # Re-entries on weekly panel
+        reentries_weekly = [{'date': r['date'], 'price': r['price'], 'trade_num': i+1} 
+                            for i, t in enumerate(trades) for r in t.exits if r['percent'] < 0]
+        if reentries_weekly:
+            fig.add_trace(
+                go.Scatter(
+                    x=[r['date'] for r in reentries_weekly],
+                    y=[r['price'] for r in reentries_weekly],
+                    mode='markers',
+                    marker=dict(symbol='diamond', size=12, color='cyan', line=dict(width=2, color='blue')),
+                    text=[f"RE-ENTRY #{r['trade_num']}<br>{r['date'].strftime('%Y-%m-%d')}<br>${r['price']:.2f}" for r in reentries_weekly],
+                    hoverinfo='text',
+                    name='Re-Entry',
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+        
         # Stop Losses on weekly panel
         stops_weekly = [{'date': s['date'], 'price': s['price'], 'trade_num': i+1} 
                         for i, t in enumerate(trades) for s in t.exits if 'Stop Loss' in s['reason']]
@@ -364,6 +382,27 @@ def create_all_panels_chart(symbol='AAPL'):
                 row=3, col=1
             )
             
+        # Re-entries
+        reentries = [{'date': r['date'], 'price': r['price'], 'trade_num': i+1} 
+                     for i, t in enumerate(trades) for r in t.exits if r['percent'] < 0]
+        if reentries:
+            fig.add_trace(
+                go.Scatter(
+                    x=[r['date'] for r in reentries],
+                    y=[r['price'] for r in reentries],
+                    mode='markers+text',
+                    marker=dict(symbol='diamond', size=12, color='cyan', line=dict(width=2, color='blue')),
+                    text=[f"#{r['trade_num']}" for r in reentries],
+                    textposition='top center',
+                    textfont=dict(size=9, color='blue', family='Arial Black'),
+                    hovertext=[f"RE-ENTRY #{r['trade_num']}<br>{r['date'].strftime('%Y-%m-%d')}<br>${r['price']:.2f}" for r in reentries],
+                    hoverinfo='text',
+                    name='Re-Entry +50%',
+                    showlegend=True
+                ),
+                row=3, col=1
+            )
+        
         # Stop Losses
         stops = [{'date': s['date'], 'price': s['price'], 'trade_num': i+1} 
                  for i, t in enumerate(trades) for s in t.exits if 'Stop Loss' in s['reason']]
@@ -588,25 +627,43 @@ def create_all_panels_chart(symbol='AAPL'):
             exit_events = '<div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(255,215,0,0.3); border-radius: 4px;"><strong style="color: #b8860b;">🔄 ACTIVE</strong>: Position still open</div>'
         elif is_active:
             for exit_info in trade.exits:
-                exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
-                exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
-                exit_events += f"""
-                <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
-                    <strong style="color: {exit_color};">{exit_type}</strong>: 
-                    {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
-                </div>
-                """
-            exit_events += '<div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(255,215,0,0.3); border-radius: 4px;"><strong style="color: #b8860b;">🔄 ACTIVE</strong>: 50% position still open</div>'
+                if exit_info['percent'] < 0:
+                    # Re-entry
+                    exit_events += f"""
+                    <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,255,0,0.1); border-radius: 4px;">
+                        <strong style="color: green;">+50% RE-ENTRY</strong>: 
+                        {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                    </div>
+                    """
+                else:
+                    exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
+                    exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
+                    exit_events += f"""
+                    <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <strong style="color: {exit_color};">{exit_type}</strong>: 
+                        {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                    </div>
+                    """
+            exit_events += '<div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(255,215,0,0.3); border-radius: 4px;"><strong style="color: #b8860b;">🔄 ACTIVE</strong>: Position still open</div>'
         else:
             for exit_info in trade.exits:
-                exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
-                exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
-                exit_events += f"""
-                <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
-                    <strong style="color: {exit_color};">{exit_type}</strong>: 
-                    {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
-                </div>
-                """
+                if exit_info['percent'] < 0:
+                    # Re-entry
+                    exit_events += f"""
+                    <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,255,0,0.1); border-radius: 4px;">
+                        <strong style="color: green;">+50% RE-ENTRY</strong>: 
+                        {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                    </div>
+                    """
+                else:
+                    exit_type = "50%" if "50%" in exit_info['reason'] else "100%" if "100%" in exit_info['reason'] else "SL"
+                    exit_color = 'orange' if exit_type == "50%" else 'red' if exit_type == "100%" else 'purple'
+                    exit_events += f"""
+                    <div style="margin: 4px 0; padding: 4px 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                        <strong style="color: {exit_color};">{exit_type}</strong>: 
+                        {exit_info['date'].strftime('%Y-%m-%d')} @ ${exit_info['price']:.2f}
+                    </div>
+                    """
         
         # Calculate duration
         if trade.exits:

@@ -54,16 +54,20 @@ class Trade:
         self.is_closed = False
         
     def add_exit(self, exit_date, exit_price, exit_percent, exit_reason):
-        """Record a partial or full exit."""
+        """Record a partial exit, full exit, or re-entry (negative percent)."""
         self.exits.append({
             'date': exit_date,
             'price': exit_price,
             'percent': exit_percent,
             'reason': exit_reason,
-            'remaining': max(0, self.position_size - exit_percent)
+            'remaining': max(0, self.position_size - exit_percent) if exit_percent > 0 else self.position_size + abs(exit_percent)
         })
         
-        self.position_size -= exit_percent
+        # Update position size (negative = re-entry)
+        if exit_percent < 0:
+            self.position_size += abs(exit_percent)
+        else:
+            self.position_size -= exit_percent
         
         if self.position_size <= 0:
             self.is_closed = True
@@ -79,7 +83,17 @@ class Trade:
         total_pnl_percent = 0
         for exit_info in self.exits:
             pnl_percent = ((exit_info['price'] - self.entry_price) / self.entry_price) * 100
-            weighted_pnl = pnl_percent * exit_info['percent']
+            
+            # For re-entries (negative percent), we're buying back at a loss/gain
+            if exit_info['percent'] < 0:
+                # Re-entry at lower price = missed gains on that 50%
+                # Re-entry at higher price = locked in loss on that 50%
+                # We account for this by treating it as an exit then re-entry
+                weighted_pnl = pnl_percent * abs(exit_info['percent'])
+            else:
+                # Normal exit
+                weighted_pnl = pnl_percent * exit_info['percent']
+            
             total_pnl_percent += weighted_pnl
         
         return total_pnl_percent
@@ -222,6 +236,16 @@ def run_backtest(symbol='AAPL',
                 'band': weekly_fvb.loc[date, 'deviation_upper_1x']
             })
     
+    # Weekly 50% re-entries (price closes below fair value after taking profit)
+    for date in weekly_fvb.index:
+        if weekly_fvb.loc[date, 'Close'] < weekly_fvb.loc[date, 'fair_value']:
+            exit_events.append({
+                'date': date,
+                'price': weekly_fvb.loc[date, 'Close'],
+                'type': '50_reentry',
+                'fair_value': weekly_fvb.loc[date, 'fair_value']
+            })
+    
     # Weekly BX stop losses
     for i in range(1, len(weekly_bx)):
         bx = weekly_bx['short_term_xtrender'].iloc[i]
@@ -273,6 +297,15 @@ def run_backtest(symbol='AAPL',
                         exit_price=event['price'],
                         exit_percent=active_trade.position_size,
                         exit_reason='100% Exit (Daily 2x)'
+                    )
+                
+                elif event['type'] == '50_reentry' and active_trade.position_size == 0.5:
+                    # Re-enter 50% after pullback below fair value
+                    active_trade.add_exit(
+                        exit_date=event['date'],
+                        exit_price=event['price'],
+                        exit_percent=-0.5,  # Negative = adding back position
+                        exit_reason='50% Re-Entry (Below Fair Value)'
                     )
                 
                 elif event['type'] == 'stop_loss' and active_trade.position_size > 0:
